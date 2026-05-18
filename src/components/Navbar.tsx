@@ -11,6 +11,7 @@ interface NavbarProps {
 const NAV_LINKS = [
   { href: "/dashboard", label: "Inicio" },
   { href: "/dashboard/history", label: "Historial" },
+  { href: "/dashboard/progress", label: "Progreso" },
   { href: "/dashboard/calculators", label: "Calculadoras" },
 ];
 

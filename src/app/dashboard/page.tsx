@@ -31,6 +31,15 @@ export default async function DashboardPage() {
         </Link>
 
         <Link
+          href="/dashboard/progress"
+          className="bg-gray-800 hover:bg-gray-700 rounded-xl p-6 transition-colors"
+        >
+          <div className="text-3xl mb-3">📈</div>
+          <div className="font-semibold text-lg">Progreso</div>
+          <div className="text-gray-400 text-sm mt-1">Evolución de 1RM por ejercicio</div>
+        </Link>
+
+        <Link
           href="/dashboard/calculators"
           className="bg-gray-800 hover:bg-gray-700 rounded-xl p-6 transition-colors"
         >
