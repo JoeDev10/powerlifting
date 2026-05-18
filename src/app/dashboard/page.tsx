@@ -15,7 +15,7 @@ interface PR {
 interface Session {
   id: string;
   date: string;
-  sets: { exercise: { name: string } }[];
+  sets: { weight: number; reps: number; exercise: { name: string } }[];
 }
 
 const MAIN_LIFTS = ["Sentadilla", "Press de banca", "Peso muerto"];
@@ -45,12 +45,17 @@ export default function DashboardPage() {
   const mainPrs = MAIN_LIFTS.map((name) => prs.find((p) => p.name === name)).filter(Boolean) as PR[];
   const sbd = mainPrs.reduce((acc, p) => acc + p.bestOrm, 0);
   const lastSession = sessions[0];
-  const thisWeek = sessions.filter((s) => {
+  const weekSessions = sessions.filter((s) => {
     const d = new Date(s.date);
     const now = new Date();
     const diffDays = (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24);
     return diffDays <= 7;
-  }).length;
+  });
+  const thisWeek = weekSessions.length;
+  const weekVolume = weekSessions.reduce(
+    (sum, s) => sum + s.sets.reduce((vs, set) => vs + set.weight * set.reps, 0),
+    0
+  );
 
   return (
     <main className="max-w-4xl mx-auto p-4 space-y-6">
@@ -73,7 +78,7 @@ export default function DashboardPage() {
       {!loading && sessions.length > 0 && (
         <>
           {/* Stats row */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div className="bg-gray-900 rounded-xl p-4 text-center">
               <p className="text-xs text-gray-400 mb-1">Sesiones totales</p>
               <p className="text-2xl font-bold">{sessions.length}</p>
@@ -81,6 +86,13 @@ export default function DashboardPage() {
             <div className="bg-gray-900 rounded-xl p-4 text-center">
               <p className="text-xs text-gray-400 mb-1">Esta semana</p>
               <p className="text-2xl font-bold">{thisWeek}</p>
+            </div>
+            <div className="bg-gray-900 rounded-xl p-4 text-center">
+              <p className="text-xs text-gray-400 mb-1">Volumen semanal</p>
+              <p className="text-2xl font-bold text-orange-400">
+                {weekVolume > 0 ? Math.round(weekVolume).toLocaleString("es-AR") : "—"}
+                {weekVolume > 0 && <span className="text-sm text-gray-400"> kg</span>}
+              </p>
             </div>
             <div className="bg-gray-900 rounded-xl p-4 text-center">
               <p className="text-xs text-gray-400 mb-1">Total SBD</p>

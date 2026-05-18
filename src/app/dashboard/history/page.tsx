@@ -115,7 +115,7 @@ export default function HistoryPage() {
                       )}
                     </div>
                     <div className="text-sm text-gray-400 mt-0.5">
-                      {session.sets.length} series · {exerciseGroups.map((e) => e.name).join(", ")}
+                      {session.sets.length} series · {Math.round(session.sets.reduce((sum, s) => sum + s.weight * s.reps, 0)).toLocaleString("es-AR")} kg · {exerciseGroups.map((e) => e.name).join(", ")}
                     </div>
                   </div>
                   <span className="text-gray-500 ml-2">{isOpen ? "▲" : "▼"}</span>

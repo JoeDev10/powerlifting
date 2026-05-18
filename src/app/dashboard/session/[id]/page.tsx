@@ -2,12 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
-
-interface Exercise {
-  id: string;
-  name: string;
-  category: string;
-}
+import { ExercisePicker, type Exercise } from "@/components/ExercisePicker";
 
 interface SetRow {
   weight: string;
@@ -34,68 +29,10 @@ const CATEGORY_COLOR: Record<string, string> = {
   accessory: "text-gray-400",
 };
 
-function ExercisePicker({
-  exercises,
-  onSelect,
-  onClose,
-}: {
-  exercises: Exercise[];
-  onSelect: (id: string) => void;
-  onClose: () => void;
-}) {
-  const [search, setSearch] = useState("");
-  const filtered = exercises.filter((e) =>
-    e.name.toLowerCase().includes(search.toLowerCase())
-  );
-  const grouped = filtered.reduce<Record<string, Exercise[]>>((acc, ex) => {
-    (acc[ex.category] ??= []).push(ex);
-    return acc;
-  }, {});
-
-  return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-end" onClick={onClose}>
-      <div
-        className="bg-gray-900 w-full rounded-t-2xl p-4 max-h-[80vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold">Seleccionar ejercicio</h3>
-          <button onClick={onClose} className="text-gray-400 text-sm px-2 py-1">Cerrar</button>
-        </div>
-        <input
-          autoFocus
-          type="text"
-          placeholder="Buscar ejercicio..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="bg-gray-800 text-white rounded-lg px-3 py-2.5 mb-4 border border-gray-700 focus:border-orange-500 focus:outline-none text-sm w-full"
-        />
-        <div className="overflow-y-auto space-y-4 pb-2">
-          {Object.entries(grouped).map(([cat, exs]) => (
-            <div key={cat}>
-              <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${CATEGORY_COLOR[cat] ?? "text-white"}`}>
-                {CATEGORY_LABELS[cat] ?? cat}
-              </p>
-              <div className="space-y-1">
-                {exs.map((ex) => (
-                  <button
-                    key={ex.id}
-                    onClick={() => onSelect(ex.id)}
-                    className="w-full text-left px-3 py-3 bg-gray-800 hover:bg-gray-700 active:bg-gray-600 rounded-lg text-sm transition-colors"
-                  >
-                    {ex.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-          {filtered.length === 0 && (
-            <p className="text-gray-500 text-sm text-center py-6">Sin resultados</p>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+function toLocalDate(iso: string) {
+  const d = new Date(iso);
+  const tz = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - tz).toISOString().slice(0, 10);
 }
 
 export default function EditSessionPage({ params }: { params: Promise<{ id: string }> }) {
@@ -104,6 +41,7 @@ export default function EditSessionPage({ params }: { params: Promise<{ id: stri
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [groups, setGroups] = useState<ExerciseGroup[]>([]);
   const [notes, setNotes] = useState("");
+  const [date, setDate] = useState("");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -115,7 +53,6 @@ export default function EditSessionPage({ params }: { params: Promise<{ id: stri
       fetch(`/api/sessions/${id}`).then((r) => r.json()),
     ]).then(([exs, session]) => {
       setExercises(exs);
-      // Convert flat sets to grouped by exercise, preserving order
       const groupMap = new Map<string, SetRow[]>();
       const orderMap = new Map<string, number>();
       for (const s of session.sets as { exerciseId: string; weight: number; reps: number; rpe: number | null; order: number }[]) {
@@ -134,6 +71,7 @@ export default function EditSessionPage({ params }: { params: Promise<{ id: stri
       );
       setGroups(sorted.map(([exerciseId, sets]) => ({ exerciseId, sets })));
       setNotes(session.notes ?? "");
+      setDate(toLocalDate(session.date));
       setLoading(false);
     });
   }, [id]);
@@ -141,6 +79,10 @@ export default function EditSessionPage({ params }: { params: Promise<{ id: stri
   function addExercise(exerciseId: string) {
     setGroups((prev) => [...prev, { exerciseId, sets: [{ weight: "", reps: "", rpe: "" }] }]);
     setShowPicker(false);
+  }
+
+  function handleExerciseCreated(ex: Exercise) {
+    setExercises((prev) => [...prev, ex].sort((a, b) => a.name.localeCompare(b.name)));
   }
 
   function removeGroup(gi: number) {
@@ -196,7 +138,7 @@ export default function EditSessionPage({ params }: { params: Promise<{ id: stri
     const res = await fetch(`/api/sessions/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ notes, sets: flatSets }),
+      body: JSON.stringify({ notes, sets: flatSets, date }),
     });
     if (res.ok) {
       router.push("/dashboard/history");
@@ -223,6 +165,7 @@ export default function EditSessionPage({ params }: { params: Promise<{ id: stri
           exercises={exercises}
           onSelect={addExercise}
           onClose={() => setShowPicker(false)}
+          onCreated={handleExerciseCreated}
         />
       )}
 
@@ -236,7 +179,16 @@ export default function EditSessionPage({ params }: { params: Promise<{ id: stri
           <div className="bg-red-900/40 border border-red-700 text-red-300 rounded-lg px-4 py-3 text-sm">{error}</div>
         )}
 
-        {/* Exercise groups */}
+        <div>
+          <label className="block text-xs text-gray-400 mb-1.5">Fecha del entrenamiento</label>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="bg-gray-900 text-white rounded-lg px-3 py-2.5 border border-gray-700 focus:border-orange-500 focus:outline-none text-sm w-full"
+          />
+        </div>
+
         {groups.map((group, gi) => {
           const ex = exerciseMap.get(group.exerciseId);
           return (

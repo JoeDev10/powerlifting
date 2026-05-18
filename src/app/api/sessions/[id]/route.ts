@@ -21,7 +21,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   if (!session?.user?.id) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
-  const { notes, sets } = await req.json();
+  const { notes, sets, date } = await req.json();
 
   // Verify ownership
   const existing = await prisma.trainingSession.findFirst({
@@ -36,6 +36,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     where: { id },
     data: {
       notes,
+      ...(date ? { date: new Date(date) } : {}),
       sets: {
         create: sets.map(
           (s: { exerciseId: string; weight: number; reps: number; rpe?: number; order: number }) => ({

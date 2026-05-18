@@ -24,12 +24,13 @@ export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const { notes, sets } = await req.json();
+  const { notes, sets, date } = await req.json();
 
   const trainingSession = await prisma.trainingSession.create({
     data: {
       userId: session.user.id,
       notes,
+      ...(date ? { date: new Date(date) } : {}),
       sets: {
         create: sets.map(
           (s: { exerciseId: string; weight: number; reps: number; rpe?: number; order: number }) => ({

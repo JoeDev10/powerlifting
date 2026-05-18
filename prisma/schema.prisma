@@ -14,13 +14,18 @@ model User {
   password  String
   createdAt DateTime          @default(now())
   sessions  TrainingSession[]
+  exercises Exercise[]
 }
 
 model Exercise {
-  id       String @id @default(cuid())
-  name     String @unique
+  id       String  @id @default(cuid())
+  name     String
   category String
+  userId   String?
+  user     User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
   sets     Set[]
+
+  @@index([userId])
 }
 
 model TrainingSession {
