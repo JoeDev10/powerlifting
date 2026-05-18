@@ -73,6 +73,36 @@ export default function HistoryPage() {
     return epley(weight, reps) >= pr.bestOrm;
   }
 
+  function exportCsv() {
+    const rows: string[][] = [["Fecha", "Ejercicio", "Categoria", "Peso (kg)", "Reps", "RPE", "1RM est. (Epley)", "Notas"]];
+    for (const s of sessions) {
+      const dateStr = new Date(s.date).toISOString().slice(0, 10);
+      const cleanNotes = s.notes ? s.notes.replace(/[\r\n,]/g, " ") : "";
+      for (const set of s.sets) {
+        rows.push([
+          dateStr,
+          set.exercise.name,
+          set.exercise.category,
+          String(set.weight),
+          String(set.reps),
+          set.rpe != null ? String(set.rpe) : "",
+          epley(set.weight, set.reps).toFixed(1),
+          cleanNotes,
+        ]);
+      }
+    }
+    const csv = rows.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `powertrack-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-32">
@@ -84,7 +114,17 @@ export default function HistoryPage() {
   return (
     <div>
       <main className="max-w-2xl mx-auto p-4 space-y-4">
-        <h2 className="text-2xl font-bold mb-6">Historial</h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold">Historial</h2>
+          {sessions.length > 0 && (
+            <button
+              onClick={exportCsv}
+              className="text-xs text-gray-400 hover:text-orange-400 px-3 py-1.5 border border-gray-700 hover:border-orange-500 rounded-lg transition-colors"
+            >
+              ↓ CSV
+            </button>
+          )}
+        </div>
 
         {sessions.length === 0 ? (
           <div className="text-center py-20">

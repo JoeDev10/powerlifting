@@ -45,17 +45,39 @@ export default function DashboardPage() {
   const mainPrs = MAIN_LIFTS.map((name) => prs.find((p) => p.name === name)).filter(Boolean) as PR[];
   const sbd = mainPrs.reduce((acc, p) => acc + p.bestOrm, 0);
   const lastSession = sessions[0];
-  const weekSessions = sessions.filter((s) => {
-    const d = new Date(s.date);
-    const now = new Date();
-    const diffDays = (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24);
-    return diffDays <= 7;
+
+  const now = new Date();
+  const dayMs = 1000 * 60 * 60 * 24;
+
+  const weekSessions = sessions.filter((s) => (now.getTime() - new Date(s.date).getTime()) <= 7 * dayMs);
+  const lastWeekSessions = sessions.filter((s) => {
+    const diff = (now.getTime() - new Date(s.date).getTime()) / dayMs;
+    return diff > 7 && diff <= 14;
   });
   const thisWeek = weekSessions.length;
-  const weekVolume = weekSessions.reduce(
-    (sum, s) => sum + s.sets.reduce((vs, set) => vs + set.weight * set.reps, 0),
-    0
-  );
+  const sumVolume = (arr: Session[]) =>
+    arr.reduce((sum, s) => sum + s.sets.reduce((vs, set) => vs + set.weight * set.reps, 0), 0);
+  const weekVolume = sumVolume(weekSessions);
+  const lastWeekVolume = sumVolume(lastWeekSessions);
+  const deltaPct = lastWeekVolume > 0 ? Math.round(((weekVolume - lastWeekVolume) / lastWeekVolume) * 100) : null;
+
+  // Weekly streak: count consecutive weeks (Mon-Sun) with at least 1 session, looking back from this week
+  function getWeekKey(d: Date) {
+    const date = new Date(d);
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() + 4 - (date.getDay() || 7));
+    const yearStart = new Date(date.getFullYear(), 0, 1);
+    const weekNum = Math.ceil(((date.getTime() - yearStart.getTime()) / dayMs + 1) / 7);
+    return `${date.getFullYear()}-${weekNum}`;
+  }
+  const sessionWeeks = new Set(sessions.map((s) => getWeekKey(new Date(s.date))));
+  let streak = 0;
+  const cursor = new Date(now);
+  if (!sessionWeeks.has(getWeekKey(cursor))) cursor.setDate(cursor.getDate() - 7);
+  while (sessionWeeks.has(getWeekKey(cursor))) {
+    streak++;
+    cursor.setDate(cursor.getDate() - 7);
+  }
 
   return (
     <main className="max-w-4xl mx-auto p-4 space-y-6">
@@ -80,15 +102,26 @@ export default function DashboardPage() {
           {/* Stats row */}
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-gray-900 rounded-xl p-4 text-center">
-              <p className="text-xs text-gray-400 mb-1">Sesiones totales</p>
-              <p className="text-2xl font-bold">{sessions.length}</p>
-            </div>
-            <div className="bg-gray-900 rounded-xl p-4 text-center">
               <p className="text-xs text-gray-400 mb-1">Esta semana</p>
-              <p className="text-2xl font-bold">{thisWeek}</p>
+              <p className="text-2xl font-bold">{thisWeek} <span className="text-sm text-gray-400 font-normal">ses.</span></p>
             </div>
             <div className="bg-gray-900 rounded-xl p-4 text-center">
-              <p className="text-xs text-gray-400 mb-1">Volumen semanal</p>
+              <p className="text-xs text-gray-400 mb-1">Racha semanal</p>
+              <p className="text-2xl font-bold">
+                {streak > 0 ? <>{streak} <span className="text-sm text-gray-400 font-normal">sem.</span> {streak >= 3 && <span className="text-base">🔥</span>}</> : "—"}
+              </p>
+            </div>
+            <div className="bg-gray-900 rounded-xl p-4 text-center">
+              <p className="text-xs text-gray-400 mb-1 flex items-center justify-center gap-1.5">
+                Volumen semanal
+                {deltaPct !== null && weekVolume > 0 && (
+                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                    deltaPct > 0 ? "bg-green-900/50 text-green-400" : deltaPct < 0 ? "bg-red-900/50 text-red-400" : "bg-gray-800 text-gray-400"
+                  }`}>
+                    {deltaPct > 0 ? "+" : ""}{deltaPct}%
+                  </span>
+                )}
+              </p>
               <p className="text-2xl font-bold text-orange-400">
                 {weekVolume > 0 ? Math.round(weekVolume).toLocaleString("es-AR") : "—"}
                 {weekVolume > 0 && <span className="text-sm text-gray-400"> kg</span>}

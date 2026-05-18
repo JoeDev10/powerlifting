@@ -89,6 +89,16 @@ export default function EditSessionPage({ params }: { params: Promise<{ id: stri
     setGroups((prev) => prev.filter((_, i) => i !== gi));
   }
 
+  function moveGroup(from: number, dir: -1 | 1) {
+    setGroups((prev) => {
+      const to = from + dir;
+      if (to < 0 || to >= prev.length) return prev;
+      const next = [...prev];
+      [next[from], next[to]] = [next[to], next[from]];
+      return next;
+    });
+  }
+
   function addSet(gi: number) {
     setGroups((prev) =>
       prev.map((g, i) => {
@@ -200,12 +210,24 @@ export default function EditSessionPage({ params }: { params: Promise<{ id: stri
                   </p>
                   <p className="text-xs text-gray-500 mt-0.5">{CATEGORY_LABELS[ex?.category ?? ""] ?? ""}</p>
                 </div>
-                <button
-                  onClick={() => removeGroup(gi)}
-                  className="text-gray-600 hover:text-red-400 text-xs transition-colors py-1 px-2"
-                >
-                  Quitar
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => moveGroup(gi, -1)} disabled={gi === 0}
+                    className="text-gray-600 hover:text-orange-400 disabled:opacity-20 disabled:hover:text-gray-600 text-base px-2 py-1 transition-colors"
+                    aria-label="Mover arriba"
+                  >↑</button>
+                  <button
+                    onClick={() => moveGroup(gi, 1)} disabled={gi === groups.length - 1}
+                    className="text-gray-600 hover:text-orange-400 disabled:opacity-20 disabled:hover:text-gray-600 text-base px-2 py-1 transition-colors"
+                    aria-label="Mover abajo"
+                  >↓</button>
+                  <button
+                    onClick={() => removeGroup(gi)}
+                    className="text-gray-600 hover:text-red-400 text-xs transition-colors py-1 px-2 ml-1"
+                  >
+                    Quitar
+                  </button>
+                </div>
               </div>
 
               <div className="px-4 pt-3 pb-4 space-y-2">
