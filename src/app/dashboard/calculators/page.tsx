@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 // 1RM formulas
 function epley(w: number, r: number) { return r === 1 ? w : w * (1 + r / 30); }
@@ -58,6 +58,19 @@ export default function CalculatorsPage() {
   const [total, setTotal] = useState("");
   const [sex, setSex] = useState<"male" | "female">("male");
   const [eq, setEq] = useState<"raw" | "equipped">("raw");
+  const [latestBw, setLatestBw] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch("/api/bodyweight")
+      .then((r) => r.json())
+      .then((entries: { weight: number }[]) => {
+        if (entries?.length > 0) {
+          setLatestBw(entries[0].weight);
+          setBw(String(entries[0].weight));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const [targetWeight, setTargetWeight] = useState("");
 
@@ -146,6 +159,9 @@ export default function CalculatorsPage() {
               <label className="block text-sm text-gray-300 mb-1.5">Peso corporal (kg)</label>
               <input type="number" inputMode="decimal" value={bw} onChange={(e) => setBw(e.target.value)} placeholder="83"
                 className="w-full bg-gray-900 text-white rounded-lg px-4 py-2.5 border border-gray-700 focus:border-orange-500 focus:outline-none" />
+              {latestBw !== null && parseFloat(bw) === latestBw && (
+                <p className="text-[10px] text-gray-500 mt-1">Auto: último registro</p>
+              )}
             </div>
             <div>
               <label className="block text-sm text-gray-300 mb-1.5">Total (kg)</label>
@@ -178,6 +194,9 @@ export default function CalculatorsPage() {
               <label className="block text-sm text-gray-300 mb-1.5">Peso corporal (kg)</label>
               <input type="number" inputMode="decimal" value={bw} onChange={(e) => setBw(e.target.value)} placeholder="83"
                 className="w-full bg-gray-900 text-white rounded-lg px-4 py-2.5 border border-gray-700 focus:border-orange-500 focus:outline-none" />
+              {latestBw !== null && parseFloat(bw) === latestBw && (
+                <p className="text-[10px] text-gray-500 mt-1">Auto: último registro</p>
+              )}
             </div>
             <div>
               <label className="block text-sm text-gray-300 mb-1.5">Total (kg)</label>

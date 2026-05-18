@@ -12,7 +12,16 @@ const NAV_LINKS = [
   { href: "/dashboard", label: "Inicio" },
   { href: "/dashboard/history", label: "Historial" },
   { href: "/dashboard/progress", label: "Progreso" },
+  { href: "/dashboard/templates", label: "Templates" },
+  { href: "/dashboard/bodyweight", label: "Peso" },
   { href: "/dashboard/calculators", label: "Calculadoras" },
+];
+
+const MOBILE_NAV_LINKS = [
+  { href: "/dashboard", label: "Inicio" },
+  { href: "/dashboard/history", label: "Historial" },
+  { href: "/dashboard/progress", label: "Progreso" },
+  { href: "/dashboard/calculators", label: "Calc" },
 ];
 
 export default function Navbar({ userName }: NavbarProps) {
@@ -55,7 +64,7 @@ export default function Navbar({ userName }: NavbarProps) {
 
       {/* Mobile nav */}
       <div className="sm:hidden flex border-t border-gray-800">
-        {NAV_LINKS.map(({ href, label }) => (
+        {MOBILE_NAV_LINKS.map(({ href, label }) => (
           <Link
             key={href}
             href={href}

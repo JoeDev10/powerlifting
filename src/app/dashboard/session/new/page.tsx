@@ -15,6 +15,12 @@ interface ExerciseGroup {
   sets: SetRow[];
 }
 
+interface Template {
+  id: string;
+  name: string;
+  sets: { exerciseId: string; weight: number; reps: number; rpe: number | null; order: number }[];
+}
+
 const CATEGORY_LABELS: Record<string, string> = {
   squat: "Sentadilla",
   bench: "Press banca",
@@ -43,6 +49,55 @@ function todayLocalDate() {
   return new Date(d.getTime() - tz).toISOString().slice(0, 10);
 }
 
+function flatSetsToGroups(
+  flat: { exerciseId: string; weight: number; reps: number; rpe: number | null; order: number }[]
+): ExerciseGroup[] {
+  const groupMap = new Map<string, SetRow[]>();
+  const orderMap = new Map<string, number>();
+  for (const s of flat) {
+    if (!groupMap.has(s.exerciseId)) {
+      groupMap.set(s.exerciseId, []);
+      orderMap.set(s.exerciseId, s.order);
+    }
+    groupMap.get(s.exerciseId)!.push({
+      weight: String(s.weight),
+      reps: String(s.reps),
+      rpe: s.rpe != null ? String(s.rpe) : "",
+    });
+  }
+  const sorted = Array.from(groupMap.entries()).sort(
+    (a, b) => (orderMap.get(a[0]) ?? 0) - (orderMap.get(b[0]) ?? 0)
+  );
+  return sorted.map(([exerciseId, sets]) => ({ exerciseId, sets }));
+}
+
+function playBeep() {
+  try {
+    const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new Ctx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.6);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.6);
+  } catch {}
+}
+
+function notifyTimerDone() {
+  if (typeof window === "undefined") return;
+  if ("Notification" in window && Notification.permission === "granted") {
+    try { new Notification("Descanso terminado", { body: "¡A entrenar!", icon: "/icon-192.png" }); } catch {}
+  }
+  if ("vibrate" in navigator) {
+    try { navigator.vibrate([200, 100, 200, 100, 400]); } catch {}
+  }
+  playBeep();
+}
+
 export default function NewSessionPage() {
   const router = useRouter();
   const [exercises, setExercises] = useState<Exercise[]>([]);
@@ -54,8 +109,13 @@ export default function NewSessionPage() {
   const [showPicker, setShowPicker] = useState(false);
   const [lastSession, setLastSession] = useState<{
     date: string;
-    sets: { exerciseId: string; weight: number; reps: number; rpe: number | null }[];
+    sets: { exerciseId: string; weight: number; reps: number; rpe: number | null; order: number }[];
   } | null>(null);
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
 
   const [restDuration, setRestDuration] = useState(180);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
@@ -63,6 +123,9 @@ export default function NewSessionPage() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const startTimer = useCallback(() => {
+    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
     if (timerRef.current) clearInterval(timerRef.current);
     setTimeLeft(restDuration);
     setTimerRunning(true);
@@ -71,6 +134,7 @@ export default function NewSessionPage() {
         if (prev === null || prev <= 1) {
           clearInterval(timerRef.current!);
           setTimerRunning(false);
+          notifyTimerDone();
           return 0;
         }
         return prev - 1;
@@ -91,20 +155,44 @@ export default function NewSessionPage() {
     fetch("/api/sessions").then((r) => r.json()).then((sessions) => {
       if (sessions?.length > 0) setLastSession(sessions[0]);
     });
+    fetch("/api/templates").then((r) => r.json()).then(setTemplates);
   }, []);
 
   function copyLastSession() {
     if (!lastSession) return;
-    const groupMap = new Map<string, SetRow[]>();
-    for (const s of lastSession.sets) {
-      if (!groupMap.has(s.exerciseId)) groupMap.set(s.exerciseId, []);
-      groupMap.get(s.exerciseId)!.push({
-        weight: String(s.weight),
-        reps: String(s.reps),
-        rpe: s.rpe != null ? String(s.rpe) : "",
-      });
+    setGroups(flatSetsToGroups(lastSession.sets));
+  }
+
+  function loadTemplate(t: Template) {
+    setGroups(flatSetsToGroups(t.sets));
+    setShowTemplates(false);
+  }
+
+  async function saveAsTemplate() {
+    if (!templateName.trim()) return;
+    if (groups.length === 0) return;
+    setSavingTemplate(true);
+    const flatSets = groups.flatMap((g, gi) =>
+      g.sets.map((s, si) => ({
+        exerciseId: g.exerciseId,
+        weight: parseFloat(s.weight) || 0,
+        reps: parseInt(s.reps) || 1,
+        rpe: s.rpe ? parseFloat(s.rpe) : null,
+        order: gi * 100 + si,
+      }))
+    );
+    const res = await fetch("/api/templates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: templateName.trim(), sets: flatSets }),
+    });
+    if (res.ok) {
+      const created = await res.json();
+      setTemplates((prev) => [created, ...prev]);
+      setShowSaveTemplate(false);
+      setTemplateName("");
     }
-    setGroups(Array.from(groupMap.entries()).map(([exerciseId, sets]) => ({ exerciseId, sets })));
+    setSavingTemplate(false);
   }
 
   function addExercise(exerciseId: string) {
@@ -184,7 +272,6 @@ export default function NewSessionPage() {
     timeLeft !== null && timeLeft <= 10 ? "text-red-400" :
     timeLeft !== null && timeLeft <= 30 ? "text-yellow-400" : "text-white";
 
-  // Volume preview
   const volumeKg = groups.reduce((sum, g) => {
     return sum + g.sets.reduce((s, set) => {
       const w = parseFloat(set.weight);
@@ -204,6 +291,64 @@ export default function NewSessionPage() {
         />
       )}
 
+      {showTemplates && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-end" onClick={() => setShowTemplates(false)}>
+          <div className="bg-gray-900 w-full rounded-t-2xl p-4 max-h-[70vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold">Cargar template</h3>
+              <button onClick={() => setShowTemplates(false)} className="text-gray-400 text-sm px-2 py-1">Cerrar</button>
+            </div>
+            {templates.length === 0 ? (
+              <p className="text-gray-500 text-sm text-center py-6">No tenés templates guardados</p>
+            ) : (
+              <div className="overflow-y-auto space-y-2 pb-2">
+                {templates.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => loadTemplate(t)}
+                    className="w-full text-left px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors"
+                  >
+                    <p className="font-medium text-sm">{t.name}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{t.sets.length} series</p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showSaveTemplate && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setShowSaveTemplate(false)}>
+          <div className="bg-gray-900 w-full max-w-sm rounded-2xl p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold">Guardar como template</h3>
+            <input
+              autoFocus
+              type="text"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              placeholder="Ej: Día A - Sentadilla"
+              className="bg-gray-800 text-white rounded-lg px-3 py-2.5 border border-gray-700 focus:border-orange-500 focus:outline-none text-sm w-full"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setShowSaveTemplate(false); setTemplateName(""); }}
+                className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg py-2.5 text-sm transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={saveAsTemplate}
+                disabled={savingTemplate || !templateName.trim()}
+                className="flex-1 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white rounded-lg py-2.5 text-sm font-semibold transition-colors"
+              >
+                {savingTemplate ? "..." : "Guardar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className="max-w-2xl mx-auto p-4 space-y-4 pb-32">
         <div className="flex items-center gap-3">
           <button onClick={() => router.back()} className="text-gray-400 hover:text-white text-sm">← Volver</button>
@@ -214,7 +359,6 @@ export default function NewSessionPage() {
           <div className="bg-red-900/40 border border-red-700 text-red-300 rounded-lg px-4 py-3 text-sm">{error}</div>
         )}
 
-        {/* Date */}
         <div>
           <label className="block text-xs text-gray-400 mb-1.5">Fecha del entrenamiento</label>
           <input
@@ -226,20 +370,26 @@ export default function NewSessionPage() {
           />
         </div>
 
-        {/* Copy last session */}
-        {lastSession && groups.length === 0 && (
-          <button
-            onClick={copyLastSession}
-            className="w-full bg-gray-900 hover:bg-gray-800 border border-gray-700 text-gray-300 rounded-xl px-4 py-3 text-sm transition-colors flex items-center justify-between"
-          >
-            <span>
-              Copiar última sesión
-              <span className="text-gray-500 ml-2">
-                {new Date(lastSession.date).toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "short" })}
-              </span>
-            </span>
-            <span className="text-orange-400">↗</span>
-          </button>
+        {/* Quick-fill actions */}
+        {groups.length === 0 && (lastSession || templates.length > 0) && (
+          <div className="grid grid-cols-2 gap-2">
+            {templates.length > 0 && (
+              <button
+                onClick={() => setShowTemplates(true)}
+                className="bg-gray-900 hover:bg-gray-800 border border-gray-700 hover:border-orange-500 text-gray-300 rounded-xl px-3 py-3 text-sm transition-colors"
+              >
+                📋 Cargar template
+              </button>
+            )}
+            {lastSession && (
+              <button
+                onClick={copyLastSession}
+                className="bg-gray-900 hover:bg-gray-800 border border-gray-700 hover:border-orange-500 text-gray-300 rounded-xl px-3 py-3 text-sm transition-colors"
+              >
+                ↻ Copiar última
+              </button>
+            )}
+          </div>
         )}
 
         {/* Rest Timer */}
@@ -364,6 +514,15 @@ export default function NewSessionPage() {
             <span className="text-gray-400">Volumen total</span>
             <span className="font-bold text-orange-400">{Math.round(volumeKg).toLocaleString("es-AR")} kg</span>
           </div>
+        )}
+
+        {groups.length > 0 && (
+          <button
+            onClick={() => setShowSaveTemplate(true)}
+            className="w-full text-xs text-gray-400 hover:text-orange-400 py-2 transition-colors"
+          >
+            💾 Guardar como template
+          </button>
         )}
 
         <div>

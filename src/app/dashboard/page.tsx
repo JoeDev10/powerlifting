@@ -166,10 +166,15 @@ export default function DashboardPage() {
           <div className="font-semibold">Calculadoras</div>
           <div className="text-gray-400 text-xs mt-0.5">1RM · Wilks · IPF · Discos</div>
         </Link>
-        <Link href="/dashboard/session/new" className="bg-gray-800 hover:bg-gray-700 rounded-xl p-4 transition-colors">
-          <div className="text-2xl mb-2">⚡</div>
-          <div className="font-semibold">Nueva sesión</div>
-          <div className="text-gray-400 text-xs mt-0.5">Registrar entrenamiento</div>
+        <Link href="/dashboard/templates" className="bg-gray-800 hover:bg-gray-700 rounded-xl p-4 transition-colors">
+          <div className="text-2xl mb-2">📋</div>
+          <div className="font-semibold">Templates</div>
+          <div className="text-gray-400 text-xs mt-0.5">Rutinas guardadas</div>
+        </Link>
+        <Link href="/dashboard/bodyweight" className="bg-gray-800 hover:bg-gray-700 rounded-xl p-4 transition-colors">
+          <div className="text-2xl mb-2">⚖️</div>
+          <div className="font-semibold">Peso corporal</div>
+          <div className="text-gray-400 text-xs mt-0.5">Tracking + Wilks</div>
         </Link>
       </div>
     </main>

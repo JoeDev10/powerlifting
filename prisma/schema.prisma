@@ -8,22 +8,59 @@ datasource db {
 }
 
 model User {
-  id        String            @id @default(cuid())
-  name      String?
-  email     String            @unique
-  password  String
-  createdAt DateTime          @default(now())
-  sessions  TrainingSession[]
-  exercises Exercise[]
+  id          String            @id @default(cuid())
+  name        String?
+  email       String            @unique
+  password    String
+  createdAt   DateTime          @default(now())
+  sessions    TrainingSession[]
+  exercises   Exercise[]
+  templates   Template[]
+  bodyWeights BodyWeight[]
 }
 
 model Exercise {
-  id       String  @id @default(cuid())
-  name     String
-  category String
-  userId   String?
-  user     User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sets     Set[]
+  id           String        @id @default(cuid())
+  name         String
+  category     String
+  userId       String?
+  user         User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sets         Set[]
+  templateSets TemplateSet[]
+
+  @@index([userId])
+}
+
+model Template {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  createdAt DateTime      @default(now())
+  sets      TemplateSet[]
+
+  @@index([userId])
+}
+
+model TemplateSet {
+  id         String   @id @default(cuid())
+  templateId String
+  template   Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  exerciseId String
+  exercise   Exercise @relation(fields: [exerciseId], references: [id])
+  weight     Float
+  reps       Int
+  rpe        Float?
+  order      Int
+}
+
+model BodyWeight {
+  id     String   @id @default(cuid())
+  userId String
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weight Float
+  date   DateTime @default(now())
+  notes  String?
 
   @@index([userId])
 }
