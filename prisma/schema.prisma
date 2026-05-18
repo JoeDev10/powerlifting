@@ -17,6 +17,7 @@ model User {
   exercises   Exercise[]
   templates   Template[]
   bodyWeights BodyWeight[]
+  goals       Goal[]
 }
 
 model Exercise {
@@ -27,6 +28,22 @@ model Exercise {
   user         User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
   sets         Set[]
   templateSets TemplateSet[]
+  goals        Goal[]
+
+  @@index([userId])
+}
+
+model Goal {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exerciseId   String
+  exercise     Exercise  @relation(fields: [exerciseId], references: [id])
+  targetWeight Float
+  targetDate   DateTime?
+  startWeight  Float?
+  achievedAt   DateTime?
+  createdAt    DateTime  @default(now())
 
   @@index([userId])
 }

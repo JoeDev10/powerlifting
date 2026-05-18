@@ -12,9 +12,11 @@ const NAV_LINKS = [
   { href: "/dashboard", label: "Inicio" },
   { href: "/dashboard/history", label: "Historial" },
   { href: "/dashboard/progress", label: "Progreso" },
+  { href: "/dashboard/goals", label: "Metas" },
+  { href: "/dashboard/stats", label: "Stats" },
   { href: "/dashboard/templates", label: "Templates" },
   { href: "/dashboard/bodyweight", label: "Peso" },
-  { href: "/dashboard/calculators", label: "Calculadoras" },
+  { href: "/dashboard/calculators", label: "Calc" },
 ];
 
 const MOBILE_NAV_LINKS = [

@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ExercisePicker, type Exercise } from "@/components/ExercisePicker";
+import PlateChips from "@/components/PlateChips";
 
 interface SetRow {
   weight: string;
@@ -481,37 +482,47 @@ export default function NewSessionPage() {
                   <span />
                 </div>
 
-                {group.sets.map((s, si) => (
-                  <div key={si} className="grid grid-cols-[1.5rem_1fr_1fr_1fr_1.5rem] gap-2 items-center">
-                    <span className="text-xs text-gray-600 text-center">{si + 1}</span>
-                    <input
-                      type="number" inputMode="decimal" min="0" step="0.5"
-                      value={s.weight} onChange={(e) => updateSet(gi, si, "weight", e.target.value)}
-                      placeholder="100"
-                      className="bg-gray-800 text-white rounded-lg px-2 py-2.5 border border-gray-700 focus:border-orange-500 focus:outline-none text-sm text-center"
-                    />
-                    <input
-                      type="number" inputMode="numeric" min="1"
-                      value={s.reps} onChange={(e) => updateSet(gi, si, "reps", e.target.value)}
-                      placeholder="5"
-                      className="bg-gray-800 text-white rounded-lg px-2 py-2.5 border border-gray-700 focus:border-orange-500 focus:outline-none text-sm text-center"
-                    />
-                    <input
-                      type="number" inputMode="decimal" min="1" max="10" step="0.5"
-                      value={s.rpe} onChange={(e) => updateSet(gi, si, "rpe", e.target.value)}
-                      placeholder="–"
-                      className="bg-gray-800 text-white rounded-lg px-2 py-2.5 border border-gray-700 focus:border-orange-500 focus:outline-none text-sm text-center"
-                    />
-                    {group.sets.length > 1 ? (
-                      <button
-                        onClick={() => removeSet(gi, si)}
-                        className="text-gray-600 hover:text-red-400 text-lg leading-none transition-colors text-center"
-                      >
-                        ×
-                      </button>
-                    ) : <span />}
-                  </div>
-                ))}
+                {group.sets.map((s, si) => {
+                  const w = parseFloat(s.weight);
+                  return (
+                    <div key={si} className="space-y-1">
+                      <div className="grid grid-cols-[1.5rem_1fr_1fr_1fr_1.5rem] gap-2 items-center">
+                        <span className="text-xs text-gray-600 text-center">{si + 1}</span>
+                        <input
+                          type="number" inputMode="decimal" min="0" step="0.5"
+                          value={s.weight} onChange={(e) => updateSet(gi, si, "weight", e.target.value)}
+                          placeholder="100"
+                          className="bg-gray-800 text-white rounded-lg px-2 py-2.5 border border-gray-700 focus:border-orange-500 focus:outline-none text-sm text-center"
+                        />
+                        <input
+                          type="number" inputMode="numeric" min="1"
+                          value={s.reps} onChange={(e) => updateSet(gi, si, "reps", e.target.value)}
+                          placeholder="5"
+                          className="bg-gray-800 text-white rounded-lg px-2 py-2.5 border border-gray-700 focus:border-orange-500 focus:outline-none text-sm text-center"
+                        />
+                        <input
+                          type="number" inputMode="decimal" min="1" max="10" step="0.5"
+                          value={s.rpe} onChange={(e) => updateSet(gi, si, "rpe", e.target.value)}
+                          placeholder="–"
+                          className="bg-gray-800 text-white rounded-lg px-2 py-2.5 border border-gray-700 focus:border-orange-500 focus:outline-none text-sm text-center"
+                        />
+                        {group.sets.length > 1 ? (
+                          <button
+                            onClick={() => removeSet(gi, si)}
+                            className="text-gray-600 hover:text-red-400 text-lg leading-none transition-colors text-center"
+                          >
+                            ×
+                          </button>
+                        ) : <span />}
+                      </div>
+                      {!isNaN(w) && w >= 20 && (
+                        <div className="pl-8 pr-2">
+                          <PlateChips weight={w} />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
 
                 <button
                   onClick={() => addSet(gi)}

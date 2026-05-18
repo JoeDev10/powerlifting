@@ -1,6 +1,6 @@
 // PowerTrack service worker — offline support
 // Bump CACHE_VERSION on deploy to invalidate old caches
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const STATIC_CACHE = `pt-static-${CACHE_VERSION}`;
 const DATA_CACHE = `pt-data-${CACHE_VERSION}`;
 
