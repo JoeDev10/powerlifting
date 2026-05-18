@@ -1,11 +1,8 @@
+// Run manually after deploy: npx tsx prisma/seed.ts
 import { PrismaClient } from "../src/generated/prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
-import path from "path";
+import { PrismaNeon } from "@prisma/adapter-neon";
 
-const Database = require("better-sqlite3");
-
-const sqlite = new Database(path.resolve(__dirname, "dev.db"));
-const adapter = new PrismaBetterSqlite3(sqlite);
+const adapter = new PrismaNeon({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter } as never);
 
 const exercises = [
@@ -22,8 +19,8 @@ const exercises = [
   { name: "Dominadas", category: "accessory" },
   { name: "Hip thrust", category: "accessory" },
   { name: "Good morning", category: "accessory" },
-  { name: "Curl de bíceps", category: "accessory" },
-  { name: "Extensión de tríceps", category: "accessory" },
+  { name: "Curl de biceps", category: "accessory" },
+  { name: "Extension de triceps", category: "accessory" },
 ];
 
 async function main() {
