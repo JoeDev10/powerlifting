@@ -1,0 +1,45 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id        String            @id @default(cuid())
+  name      String?
+  email     String            @unique
+  password  String
+  createdAt DateTime          @default(now())
+  sessions  TrainingSession[]
+}
+
+model Exercise {
+  id       String @id @default(cuid())
+  name     String @unique
+  category String
+  sets     Set[]
+}
+
+model TrainingSession {
+  id     String   @id @default(cuid())
+  userId String
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date   DateTime @default(now())
+  notes  String?
+  sets   Set[]
+}
+
+model Set {
+  id         String          @id @default(cuid())
+  sessionId  String
+  session    TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exerciseId String
+  exercise   Exercise        @relation(fields: [exerciseId], references: [id])
+  weight     Float
+  reps       Int
+  rpe        Float?
+  order      Int
+}

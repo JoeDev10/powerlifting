@@ -1,7 +1,24 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-git)"
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-git)",
+      "Bash(npm install *)",
+      "Bash(npx prisma *)",
+      "Bash(mkdir \"C:\\\\Users\\\\Usuario\\\\Desktop\\\\proyectos 2.0\\\\powerlifting\\\\src\\\\lib\" 2>&1; mkdir \"C:\\\\Users\\\\Usuario\\\\Desktop\\\\proyectos 2.0\\\\powerlifting\\\\src\\\\app\\\\api\\\\auth\\\\[...nextauth]\" 2>&1)",
+      "PowerShell(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\Usuario\\\\Desktop\\\\proyectos 2.0\\\\powerlifting\\\\src\\\\app\\\\login\")",
+      "PowerShell(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\Usuario\\\\Desktop\\\\proyectos 2.0\\\\powerlifting\\\\src\\\\app\\\\register\")",
+      "PowerShell(New-Item -ItemType Directory -Force -Path \"C:\\\\Users\\\\Usuario\\\\Desktop\\\\proyectos 2.0\\\\powerlifting\\\\src\\\\app\\\\dashboard\")",
+      "Bash(npx next *)",
+      "Bash(node -e \"const p = require\\('@prisma/client'\\); console.log\\(Object.keys\\(p\\).slice\\(0,20\\)\\)\")",
+      "Bash(node -e \"const { PrismaBetterSQLite3 } = require\\('@prisma/adapter-better-sqlite3'\\); console.log\\(typeof PrismaBetterSQLite3\\)\")",
+      "Bash(node -e \"const m = require\\('@prisma/adapter-better-sqlite3'\\); console.log\\(Object.keys\\(m\\)\\)\")",
+      "Bash(node -e \"const { PrismaBetterSqlite3 } = require\\('@prisma/adapter-better-sqlite3'\\); const f = new PrismaBetterSqlite3\\({ url: 'file:./prisma/dev.db' }\\); console.log\\('ok'\\)\")",
+      "Bash(npm run *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
+      "Bash(npx ts-node --project tsconfig.json -e ' *)",
+      "Bash(node -e ' *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
     ]
   }
 }
