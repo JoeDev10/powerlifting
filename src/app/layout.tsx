@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
+import OfflineProvider from "@/components/OfflineProvider";
 
 const geist = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
@@ -29,7 +30,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
-      <body className="min-h-full flex flex-col bg-gray-950">{children}</body>
+      <body className="min-h-full flex flex-col bg-gray-950">
+        <OfflineProvider />
+        {children}
+      </body>
     </html>
   );
 }
