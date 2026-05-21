@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import DashboardTour from "@/components/DashboardTour";
+import TrainingHeatmap from "@/components/TrainingHeatmap";
 
 interface PR {
   name: string;
@@ -49,6 +51,10 @@ export default function DashboardPage() {
   const now = new Date();
   const dayMs = 1000 * 60 * 60 * 24;
 
+  const daysSinceLastSession = lastSession
+    ? Math.floor((now.getTime() - new Date(lastSession.date).getTime()) / dayMs)
+    : null;
+
   const weekSessions = sessions.filter((s) => (now.getTime() - new Date(s.date).getTime()) <= 7 * dayMs);
   const lastWeekSessions = sessions.filter((s) => {
     const diff = (now.getTime() - new Date(s.date).getTime()) / dayMs;
@@ -81,8 +87,10 @@ export default function DashboardPage() {
 
   return (
     <main className="max-w-4xl mx-auto p-4 space-y-6">
+      <DashboardTour />
       {/* Quick action */}
       <Link
+        id="tour-new-session"
         href="/dashboard/session/new"
         className="flex items-center justify-between bg-orange-600 hover:bg-orange-500 rounded-2xl p-5 transition-colors"
       >
@@ -97,10 +105,23 @@ export default function DashboardPage() {
         <div className="text-4xl font-bold">+</div>
       </Link>
 
+      {/* Inactivity reminder */}
+      {!loading && daysSinceLastSession !== null && daysSinceLastSession >= 3 && (
+        <div className="bg-blue-950/40 border border-blue-800/60 rounded-xl px-4 py-3 flex items-center justify-between">
+          <p className="text-sm text-blue-200">
+            No entrenás hace{" "}
+            <span className="font-bold text-white">{daysSinceLastSession} días</span>
+          </p>
+          <Link href="/dashboard/session/new" className="text-orange-400 text-sm font-semibold hover:text-orange-300 transition-colors">
+            Entrenar →
+          </Link>
+        </div>
+      )}
+
       {!loading && sessions.length > 0 && (
         <>
           {/* Stats row */}
-          <div className="grid grid-cols-2 gap-3">
+          <div id="tour-stats" className="grid grid-cols-2 gap-3">
             <div className="bg-gray-900 rounded-xl p-4 text-center">
               <p className="text-xs text-gray-400 mb-1">Esta semana</p>
               <p className="text-2xl font-bold">{thisWeek} <span className="text-sm text-gray-400 font-normal">ses.</span></p>
@@ -138,7 +159,7 @@ export default function DashboardPage() {
 
           {/* PRs de los 3 grandes */}
           {mainPrs.length > 0 && (
-            <div className="bg-gray-900 rounded-xl overflow-hidden">
+            <div id="tour-prs" className="bg-gray-900 rounded-xl overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-800 flex items-center justify-between">
                 <p className="font-semibold text-sm">Records personales</p>
                 <Link href="/dashboard/progress" className="text-orange-400 text-xs">Ver progreso →</Link>
@@ -159,6 +180,16 @@ export default function DashboardPage() {
               </div>
             </div>
           )}
+
+          {/* Activity heatmap */}
+          <div className="bg-gray-900 rounded-xl p-4">
+            <p className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold mb-3">
+              Actividad — 16 semanas
+            </p>
+            <TrainingHeatmap
+              sessionDates={sessions.map((s) => new Date(s.date).toISOString().slice(0, 10))}
+            />
+          </div>
 
           {/* Last session */}
           {lastSession && (
@@ -184,40 +215,45 @@ export default function DashboardPage() {
 
       {/* Nav grid */}
       <div className="grid grid-cols-2 gap-3">
-        <Link href="/dashboard/history" className="bg-gray-800 hover:bg-gray-700 rounded-xl p-4 transition-colors">
+        <Link id="tour-nav-history" href="/dashboard/history" className="bg-gray-800 hover:bg-gray-700 rounded-xl p-4 transition-colors">
           <div className="text-2xl mb-2">📋</div>
           <div className="font-semibold">Historial</div>
           <div className="text-gray-400 text-xs mt-0.5">Ver sesiones anteriores</div>
         </Link>
-        <Link href="/dashboard/progress" className="bg-gray-800 hover:bg-gray-700 rounded-xl p-4 transition-colors">
+        <Link id="tour-nav-progress" href="/dashboard/progress" className="bg-gray-800 hover:bg-gray-700 rounded-xl p-4 transition-colors">
           <div className="text-2xl mb-2">📈</div>
           <div className="font-semibold">Progreso</div>
           <div className="text-gray-400 text-xs mt-0.5">Evolución de 1RM</div>
         </Link>
-        <Link href="/dashboard/calculators" className="bg-gray-800 hover:bg-gray-700 rounded-xl p-4 transition-colors">
+        <Link id="tour-nav-calculators" href="/dashboard/calculators" className="bg-gray-800 hover:bg-gray-700 rounded-xl p-4 transition-colors">
           <div className="text-2xl mb-2">🧮</div>
           <div className="font-semibold">Calculadoras</div>
           <div className="text-gray-400 text-xs mt-0.5">1RM · Wilks · IPF · Discos</div>
         </Link>
-        <Link href="/dashboard/templates" className="bg-gray-800 hover:bg-gray-700 rounded-xl p-4 transition-colors">
+        <Link id="tour-nav-templates" href="/dashboard/templates" className="bg-gray-800 hover:bg-gray-700 rounded-xl p-4 transition-colors">
           <div className="text-2xl mb-2">📋</div>
           <div className="font-semibold">Templates</div>
           <div className="text-gray-400 text-xs mt-0.5">Rutinas guardadas</div>
         </Link>
-        <Link href="/dashboard/bodyweight" className="bg-gray-800 hover:bg-gray-700 rounded-xl p-4 transition-colors">
+        <Link id="tour-nav-bodyweight" href="/dashboard/bodyweight" className="bg-gray-800 hover:bg-gray-700 rounded-xl p-4 transition-colors">
           <div className="text-2xl mb-2">⚖️</div>
           <div className="font-semibold">Peso corporal</div>
           <div className="text-gray-400 text-xs mt-0.5">Tracking + Wilks</div>
         </Link>
-        <Link href="/dashboard/goals" className="bg-gray-800 hover:bg-gray-700 rounded-xl p-4 transition-colors">
+        <Link id="tour-nav-goals" href="/dashboard/goals" className="bg-gray-800 hover:bg-gray-700 rounded-xl p-4 transition-colors">
           <div className="text-2xl mb-2">🎯</div>
           <div className="font-semibold">Metas</div>
           <div className="text-gray-400 text-xs mt-0.5">Objetivos de 1RM</div>
         </Link>
-        <Link href="/dashboard/stats" className="bg-gray-800 hover:bg-gray-700 rounded-xl p-4 transition-colors">
+        <Link id="tour-nav-stats" href="/dashboard/stats" className="bg-gray-800 hover:bg-gray-700 rounded-xl p-4 transition-colors">
           <div className="text-2xl mb-2">📊</div>
           <div className="font-semibold">Stats</div>
           <div className="text-gray-400 text-xs mt-0.5">Análisis detallado</div>
+        </Link>
+        <Link id="tour-nav-profile" href="/dashboard/profile" className="bg-gray-800 hover:bg-gray-700 rounded-xl p-4 transition-colors">
+          <div className="text-2xl mb-2">👤</div>
+          <div className="font-semibold">Perfil</div>
+          <div className="text-gray-400 text-xs mt-0.5">Nombre · Contraseña</div>
         </Link>
       </div>
     </main>

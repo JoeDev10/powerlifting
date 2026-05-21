@@ -6,6 +6,14 @@ function epley(weight: number, reps: number) {
   return reps === 1 ? weight : weight * (1 + reps / 30);
 }
 
+function getWeekMonday(d: Date): string {
+  const date = new Date(d);
+  date.setHours(0, 0, 0, 0);
+  const dow = date.getDay();
+  date.setDate(date.getDate() - (dow === 0 ? 6 : dow - 1));
+  return date.toISOString().slice(0, 10);
+}
+
 export async function GET() {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -72,6 +80,26 @@ export async function GET() {
     }
   }
 
+  // Weekly volume — last 16 weeks
+  const weeklyVolMap = new Map<string, number>();
+  for (const s of sets) {
+    const key = getWeekMonday(s.session.date);
+    weeklyVolMap.set(key, (weeklyVolMap.get(key) ?? 0) + s.weight * s.reps);
+  }
+  const todayDate = new Date();
+  todayDate.setHours(0, 0, 0, 0);
+  const todayDow = todayDate.getDay();
+  const thisMonday = new Date(todayDate);
+  thisMonday.setDate(todayDate.getDate() - (todayDow === 0 ? 6 : todayDow - 1));
+  const weeklyVolume: { week: string; volume: number }[] = [];
+  for (let i = 15; i >= 0; i--) {
+    const d = new Date(thisMonday);
+    d.setDate(thisMonday.getDate() - i * 7);
+    const key = d.toISOString().slice(0, 10);
+    const [, month, day] = key.split("-");
+    weeklyVolume.push({ week: `${day}/${month}`, volume: Math.round(weeklyVolMap.get(key) ?? 0) });
+  }
+
   const now = Date.now();
   const dayMs = 1000 * 60 * 60 * 24;
 
@@ -102,5 +130,6 @@ export async function GET() {
         orm: Math.round(p.orm * 10) / 10,
         daysSince: Math.floor((now - p.date.getTime()) / dayMs),
       })),
+    weeklyVolume,
   });
 }

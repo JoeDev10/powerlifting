@@ -49,6 +49,8 @@ export default function HistoryPage() {
   const [prs, setPrs] = useState<PR[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [dateFilter, setDateFilter] = useState<"all" | "month" | "week4">("all");
 
   useEffect(() => {
     Promise.all([
@@ -103,6 +105,18 @@ export default function HistoryPage() {
     URL.revokeObjectURL(url);
   }
 
+  const now = Date.now();
+  const dayMs = 1000 * 60 * 60 * 24;
+  const filtered = sessions.filter((s) => {
+    if (search) {
+      const q = search.toLowerCase();
+      if (!s.sets.some((set) => set.exercise.name.toLowerCase().includes(q))) return false;
+    }
+    if (dateFilter === "month") return (now - new Date(s.date).getTime()) / dayMs <= 30;
+    if (dateFilter === "week4") return (now - new Date(s.date).getTime()) / dayMs <= 28;
+    return true;
+  });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-32">
@@ -114,7 +128,7 @@ export default function HistoryPage() {
   return (
     <div>
       <main className="max-w-2xl mx-auto p-4 space-y-4">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-2">
           <h2 className="text-2xl font-bold">Historial</h2>
           {sessions.length > 0 && (
             <button
@@ -126,6 +140,39 @@ export default function HistoryPage() {
           )}
         </div>
 
+        {sessions.length > 0 && (
+          <div className="space-y-2">
+            <input
+              type="search"
+              placeholder="Buscar por ejercicio..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full bg-gray-900 text-white rounded-xl px-4 py-2.5 border border-gray-700 focus:border-orange-500 focus:outline-none text-sm"
+            />
+            <div className="flex gap-2">
+              {(
+                [
+                  ["all", "Todo"],
+                  ["month", "Último mes"],
+                  ["week4", "4 semanas"],
+                ] as const
+              ).map(([val, label]) => (
+                <button
+                  key={val}
+                  onClick={() => setDateFilter(val)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    dateFilter === val
+                      ? "bg-orange-600 text-white"
+                      : "bg-gray-800 text-gray-400 hover:text-white"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {sessions.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-gray-500 mb-4">Todavía no registraste ninguna sesión</p>
@@ -135,7 +182,12 @@ export default function HistoryPage() {
             </Link>
           </div>
         ) : (
-          sessions.map((session) => {
+          filtered.length === 0 ? (
+            <div className="text-center py-12 text-gray-500 text-sm">
+              Sin resultados para esa búsqueda
+            </div>
+          ) :
+          filtered.map((session) => {
             const date = new Date(session.date);
             const isOpen = expanded === session.id;
             const exerciseGroups = groupSetsByExercise(session.sets);

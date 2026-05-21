@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 interface Stats {
   totalSets: number;
@@ -9,6 +10,17 @@ interface Stats {
   exerciseFrequency: { name: string; category: string; count: number; daysSinceLast: number }[];
   rpeDistribution: { rpe: string; count: number }[];
   daysSincePR: { name: string; category: string; orm: number; daysSince: number }[];
+  weeklyVolume: { week: string; volume: number }[];
+}
+
+function VolumeTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number }[]; label?: string }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm">
+      <p className="text-gray-400 mb-1">Sem. {label}</p>
+      <p className="text-orange-400 font-bold">{payload[0].value.toLocaleString("es-AR")} kg</p>
+    </div>
+  );
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -64,6 +76,31 @@ export default function StatsPage() {
   return (
     <main className="max-w-2xl mx-auto p-4 space-y-6">
       <h2 className="text-2xl font-bold">Stats</h2>
+
+      {/* Volumen semanal */}
+      {stats.weeklyVolume?.some((w) => w.volume > 0) && (
+        <div>
+          <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold mb-2">Volumen por semana</p>
+          <div className="bg-gray-900 rounded-xl p-4">
+            <ResponsiveContainer width="100%" height={120}>
+              <BarChart data={stats.weeklyVolume} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                <XAxis dataKey="week" tick={{ fill: "#6b7280", fontSize: 10 }} interval={3} />
+                <YAxis
+                  tick={{ fill: "#6b7280", fontSize: 10 }}
+                  width={38}
+                  tickFormatter={(v: number) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v))}
+                />
+                <Tooltip content={<VolumeTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+                <Bar dataKey="volume" radius={[3, 3, 0, 0]}>
+                  {stats.weeklyVolume.map((entry, i) => (
+                    <Cell key={i} fill={entry.volume > 0 ? "#ea580c" : "#1f2937"} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       {/* Totales */}
       <div className="grid grid-cols-2 gap-3">

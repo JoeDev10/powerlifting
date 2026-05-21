@@ -24,3 +24,53 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Driver.js dark theme */
+.driver-popover {
+  background-color: #111827 !important;
+  border: 1px solid #374151 !important;
+  color: white !important;
+  border-radius: 12px !important;
+}
+.driver-popover-title {
+  color: #f97316 !important;
+  font-size: 1rem !important;
+}
+.driver-popover-description {
+  color: #d1d5db !important;
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+}
+.driver-popover-next-btn {
+  background-color: #ea580c !important;
+  border-color: #ea580c !important;
+  color: white !important;
+  border-radius: 8px !important;
+}
+.driver-popover-next-btn:hover {
+  background-color: #f97316 !important;
+  border-color: #f97316 !important;
+}
+.driver-popover-prev-btn {
+  background-color: transparent !important;
+  border-color: #374151 !important;
+  color: #9ca3af !important;
+  border-radius: 8px !important;
+}
+.driver-popover-prev-btn:hover {
+  border-color: #6b7280 !important;
+  color: #d1d5db !important;
+}
+.driver-popover-close-btn {
+  color: #6b7280 !important;
+}
+.driver-popover-close-btn:hover {
+  color: #d1d5db !important;
+}
+.driver-popover-progress-text {
+  color: #6b7280 !important;
+  font-size: 0.75rem !important;
+}
+.driver-overlay {
+  background: rgba(0, 0, 0, 0.75) !important;
+}

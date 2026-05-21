@@ -54,7 +54,21 @@ export default function Navbar({ userName }: NavbarProps) {
         </div>
 
         <div className="flex items-center gap-3">
-          {userName && <span className="text-gray-500 text-sm hidden sm:block">{userName}</span>}
+          {userName && (
+            <Link
+              href="/dashboard/profile"
+              className="text-gray-500 text-sm hidden sm:block hover:text-gray-300 transition-colors"
+            >
+              {userName}
+            </Link>
+          )}
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent("powertrack:start-tour"))}
+            className="w-6 h-6 rounded-full border border-gray-700 text-gray-400 hover:text-orange-400 hover:border-orange-400 text-xs font-bold transition-colors flex items-center justify-center"
+            title="Tour de la app"
+          >
+            ?
+          </button>
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
             className="text-gray-400 hover:text-white text-sm transition-colors"

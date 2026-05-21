@@ -71,6 +71,7 @@ export default function ProgressPage() {
   const [exercises, setExercises] = useState<ExerciseProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
+  const [range, setRange] = useState<"1m" | "3m" | "6m" | "1y" | "all">("all");
 
   useEffect(() => {
     fetch("/api/progress")
@@ -134,12 +135,21 @@ export default function ProgressPage() {
     return { ...ex, best, latest, trend };
   });
 
+  const rangeMs: Record<string, number> = { "1m": 30, "3m": 90, "6m": 180, "1y": 365 };
   const current = selected ? exercises.find((e) => e.name === selected) : null;
-  const maxOrm = current ? Math.max(...current.data.map((d) => d.orm)) : 0;
-  const minOrm = current ? Math.min(...current.data.map((d) => d.orm)) : 0;
-  const improvement = current && current.data.length > 1
-    ? current.data[current.data.length - 1].orm - current.data[0].orm
-    : 0;
+  const filteredData = current
+    ? current.data.filter((d) => {
+        if (range === "all") return true;
+        const diff = (Date.now() - new Date(d.date).getTime()) / (1000 * 60 * 60 * 24);
+        return diff <= rangeMs[range];
+      })
+    : [];
+  const maxOrm = filteredData.length ? Math.max(...filteredData.map((d) => d.orm)) : 0;
+  const minOrm = filteredData.length ? Math.min(...filteredData.map((d) => d.orm)) : 0;
+  const improvement =
+    filteredData.length > 1
+      ? filteredData[filteredData.length - 1].orm - filteredData[0].orm
+      : 0;
 
   return (
     <main className="max-w-3xl mx-auto p-4 space-y-6">
@@ -210,58 +220,110 @@ export default function ProgressPage() {
       {/* Drill-down */}
       {current && (
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">Detalle: {current.name}</p>
-            <button onClick={() => setSelected(null)} className="text-xs text-gray-500 hover:text-white">Cerrar</button>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3 mb-3">
-            <div className="bg-gray-900 rounded-xl p-3 text-center">
-              <p className="text-[10px] text-gray-400 mb-0.5 uppercase">Mejor</p>
-              <p className="text-lg font-bold">{maxOrm}<span className="text-xs text-gray-400"> kg</span></p>
-            </div>
-            <div className="bg-gray-900 rounded-xl p-3 text-center">
-              <p className="text-[10px] text-gray-400 mb-0.5 uppercase">Último</p>
-              <p className="text-lg font-bold">{current.data[current.data.length - 1].orm}<span className="text-xs text-gray-400"> kg</span></p>
-            </div>
-            <div className="bg-gray-900 rounded-xl p-3 text-center">
-              <p className="text-[10px] text-gray-400 mb-0.5 uppercase">Total</p>
-              <p className={`text-lg font-bold ${improvement >= 0 ? "text-green-400" : "text-red-400"}`}>
-                {improvement >= 0 ? "+" : ""}{improvement.toFixed(1)}<span className="text-xs"> kg</span>
-              </p>
-            </div>
-          </div>
-
-          <div className="bg-gray-900 rounded-xl p-4">
-            <p className="text-sm text-gray-400 mb-4">1RM estimado (Epley) — kg</p>
-            {current.data.length === 1 ? (
-              <div className="flex items-center justify-center h-48 text-gray-500 text-sm">
-                Registrá más sesiones para ver la evolución
+          <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+            <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">
+              Detalle: {current.name}
+            </p>
+            <div className="flex items-center gap-2">
+              <div className="flex gap-1">
+                {(
+                  [
+                    ["1m", "1M"],
+                    ["3m", "3M"],
+                    ["6m", "6M"],
+                    ["1y", "1A"],
+                    ["all", "Todo"],
+                  ] as const
+                ).map(([val, label]) => (
+                  <button
+                    key={val}
+                    onClick={() => setRange(val)}
+                    className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                      range === val
+                        ? "bg-orange-600 text-white"
+                        : "bg-gray-800 text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <LineChart data={current.data.map((d) => ({ ...d, date: formatDate(d.date) }))}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                  <XAxis dataKey="date" tick={{ fill: "#6b7280", fontSize: 12 }} />
-                  <YAxis
-                    domain={[Math.floor(minOrm * 0.95), Math.ceil(maxOrm * 1.05)]}
-                    tick={{ fill: "#6b7280", fontSize: 12 }}
-                    width={45}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <ReferenceLine y={maxOrm} stroke="#4b5563" strokeDasharray="4 4" />
-                  <Line
-                    type="monotone"
-                    dataKey="orm"
-                    stroke={CATEGORY_COLOR[current.category] ?? "#ea580c"}
-                    strokeWidth={2.5}
-                    dot={{ fill: CATEGORY_COLOR[current.category] ?? "#ea580c", r: 4 }}
-                    activeDot={{ r: 6 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
+              <button
+                onClick={() => { setSelected(null); setRange("all"); }}
+                className="text-xs text-gray-500 hover:text-white"
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
+
+          {filteredData.length === 0 ? (
+            <div className="bg-gray-900 rounded-xl flex items-center justify-center h-32 text-gray-500 text-sm">
+              Sin datos en este rango de tiempo
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                <div className="bg-gray-900 rounded-xl p-3 text-center">
+                  <p className="text-[10px] text-gray-400 mb-0.5 uppercase">Mejor</p>
+                  <p className="text-lg font-bold">
+                    {maxOrm}<span className="text-xs text-gray-400"> kg</span>
+                  </p>
+                </div>
+                <div className="bg-gray-900 rounded-xl p-3 text-center">
+                  <p className="text-[10px] text-gray-400 mb-0.5 uppercase">Último</p>
+                  <p className="text-lg font-bold">
+                    {filteredData[filteredData.length - 1].orm}
+                    <span className="text-xs text-gray-400"> kg</span>
+                  </p>
+                </div>
+                <div className="bg-gray-900 rounded-xl p-3 text-center">
+                  <p className="text-[10px] text-gray-400 mb-0.5 uppercase">
+                    {filteredData.length > 1 ? "Total" : "Datos"}
+                  </p>
+                  {filteredData.length > 1 ? (
+                    <p className={`text-lg font-bold ${improvement >= 0 ? "text-green-400" : "text-red-400"}`}>
+                      {improvement >= 0 ? "+" : ""}{improvement.toFixed(1)}
+                      <span className="text-xs"> kg</span>
+                    </p>
+                  ) : (
+                    <p className="text-lg font-bold text-gray-500">1</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-gray-900 rounded-xl p-4">
+                <p className="text-sm text-gray-400 mb-4">1RM estimado (Epley) — kg</p>
+                {filteredData.length === 1 ? (
+                  <div className="flex items-center justify-center h-48 text-gray-500 text-sm">
+                    Registrá más sesiones para ver la evolución
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <LineChart data={filteredData.map((d) => ({ ...d, date: formatDate(d.date) }))}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                      <XAxis dataKey="date" tick={{ fill: "#6b7280", fontSize: 12 }} />
+                      <YAxis
+                        domain={[Math.floor(minOrm * 0.95), Math.ceil(maxOrm * 1.05)]}
+                        tick={{ fill: "#6b7280", fontSize: 12 }}
+                        width={45}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <ReferenceLine y={maxOrm} stroke="#4b5563" strokeDasharray="4 4" />
+                      <Line
+                        type="monotone"
+                        dataKey="orm"
+                        stroke={CATEGORY_COLOR[current.category] ?? "#ea580c"}
+                        strokeWidth={2.5}
+                        dot={{ fill: CATEGORY_COLOR[current.category] ?? "#ea580c", r: 4 }}
+                        activeDot={{ r: 6 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </>
+          )}
         </div>
       )}
     </main>
