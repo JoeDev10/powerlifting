@@ -87,6 +87,20 @@ const ALL_STEPS = [
       description: "Cambiá tu nombre o contraseña desde acá.",
     },
   },
+  {
+    element: "#tour-nav-blocks",
+    popover: {
+      title: "Bloques de entrenamiento",
+      description: "Planificá tus mesociclos: volumen, intensidad, pico, descarga. La app te muestra el bloque activo y cuánto progresaste.",
+    },
+  },
+  {
+    element: "#tour-nav-competitions",
+    popover: {
+      title: "Competencias",
+      description: "Registrá tus totales de competencia y compará automáticamente con tus PRs de entrenamiento.",
+    },
+  },
 ];
 
 function startTour() {

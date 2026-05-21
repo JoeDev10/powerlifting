@@ -5,6 +5,21 @@ import Link from "next/link";
 import DashboardTour from "@/components/DashboardTour";
 import TrainingHeatmap from "@/components/TrainingHeatmap";
 
+interface Block {
+  id: string;
+  name: string;
+  phase: string;
+  startDate: string;
+  endDate: string;
+}
+
+const PHASE_COLOR: Record<string, string> = {
+  volumen: "text-blue-400",
+  intensidad: "text-orange-400",
+  pico: "text-red-400",
+  descarga: "text-green-400",
+};
+
 interface PR {
   name: string;
   category: string;
@@ -31,15 +46,22 @@ const CATEGORY_COLOR: Record<string, string> = {
 export default function DashboardPage() {
   const [prs, setPrs] = useState<PR[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [activeBlock, setActiveBlock] = useState<Block | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
       fetch("/api/prs").then((r) => r.json()),
       fetch("/api/sessions").then((r) => r.json()),
-    ]).then(([prsData, sessionsData]) => {
+      fetch("/api/blocks").then((r) => r.json()),
+    ]).then(([prsData, sessionsData, blocksData]) => {
       setPrs(prsData);
       setSessions(sessionsData);
+      const today = new Date().toISOString().slice(0, 10);
+      const active = (blocksData as Block[]).find(
+        (b) => b.startDate.slice(0, 10) <= today && b.endDate.slice(0, 10) >= today
+      ) ?? null;
+      setActiveBlock(active);
       setLoading(false);
     });
   }, []);
@@ -104,6 +126,19 @@ export default function DashboardPage() {
         </div>
         <div className="text-4xl font-bold">+</div>
       </Link>
+
+      {/* Active block indicator */}
+      {!loading && activeBlock && (
+        <Link href="/dashboard/blocks" className="flex items-center justify-between bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 hover:border-gray-600 transition-colors">
+          <div>
+            <p className="text-xs text-gray-500 uppercase tracking-wide">Bloque activo</p>
+            <p className="font-semibold mt-0.5">{activeBlock.name}</p>
+          </div>
+          <span className={`text-sm font-bold ${PHASE_COLOR[activeBlock.phase] ?? "text-gray-400"}`}>
+            {activeBlock.phase.charAt(0).toUpperCase() + activeBlock.phase.slice(1)} →
+          </span>
+        </Link>
+      )}
 
       {/* Inactivity reminder */}
       {!loading && daysSinceLastSession !== null && daysSinceLastSession >= 3 && (
@@ -254,6 +289,16 @@ export default function DashboardPage() {
           <div className="text-2xl mb-2">👤</div>
           <div className="font-semibold">Perfil</div>
           <div className="text-gray-400 text-xs mt-0.5">Nombre · Contraseña</div>
+        </Link>
+        <Link id="tour-nav-blocks" href="/dashboard/blocks" className="bg-gray-800 hover:bg-gray-700 rounded-xl p-4 transition-colors">
+          <div className="text-2xl mb-2">📅</div>
+          <div className="font-semibold">Bloques</div>
+          <div className="text-gray-400 text-xs mt-0.5">Mesociclos de entrenamiento</div>
+        </Link>
+        <Link id="tour-nav-competitions" href="/dashboard/competitions" className="bg-gray-800 hover:bg-gray-700 rounded-xl p-4 transition-colors">
+          <div className="text-2xl mb-2">🏆</div>
+          <div className="font-semibold">Competencias</div>
+          <div className="text-gray-400 text-xs mt-0.5">Totales vs PRs de entreno</div>
         </Link>
       </div>
     </main>

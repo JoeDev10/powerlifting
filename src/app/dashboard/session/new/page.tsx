@@ -14,6 +14,12 @@ interface SetRow {
 interface ExerciseGroup {
   exerciseId: string;
   sets: SetRow[];
+  notes: string;
+}
+
+interface LastSetsData {
+  date: string;
+  sets: { weight: number; reps: number; rpe: number | null }[];
 }
 
 interface Template {
@@ -69,7 +75,7 @@ function flatSetsToGroups(
   const sorted = Array.from(groupMap.entries()).sort(
     (a, b) => (orderMap.get(a[0]) ?? 0) - (orderMap.get(b[0]) ?? 0)
   );
-  return sorted.map(([exerciseId, sets]) => ({ exerciseId, sets }));
+  return sorted.map(([exerciseId, sets]) => ({ exerciseId, sets, notes: "" }));
 }
 
 function playBeep() {
@@ -118,6 +124,8 @@ export default function NewSessionPage() {
   const [templateName, setTemplateName] = useState("");
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
 
+  const [lastSetsCache, setLastSetsCache] = useState<Map<string, LastSetsData | null>>(new Map());
+
   const [restDuration, setRestDuration] = useState(180);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [timerRunning, setTimerRunning] = useState(false);
@@ -159,9 +167,31 @@ export default function NewSessionPage() {
     fetch("/api/templates").then((r) => r.json()).then(setTemplates);
   }, []);
 
-  function copyLastSession() {
+  function copyLastSession(increment = false) {
     if (!lastSession) return;
-    setGroups(flatSetsToGroups(lastSession.sets));
+    const groups = flatSetsToGroups(lastSession.sets);
+    if (!increment) { setGroups(groups); return; }
+    setGroups(groups.map((g) => ({
+      ...g,
+      sets: g.sets.map((s) => ({
+        ...s,
+        weight: String(Math.round((parseFloat(s.weight) + 2.5) * 100) / 100),
+      })),
+    })));
+  }
+
+  async function fetchLastSets(exerciseId: string) {
+    if (lastSetsCache.has(exerciseId)) return;
+    const res = await fetch(`/api/exercises/${exerciseId}/last-sets`);
+    const data: LastSetsData | null = res.ok ? await res.json() : null;
+    setLastSetsCache((prev) => new Map(prev).set(exerciseId, data));
+  }
+
+  function formatDaysAgo(dateStr: string) {
+    const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
+    if (days === 0) return "hoy";
+    if (days === 1) return "ayer";
+    return `hace ${days}d`;
   }
 
   function loadTemplate(t: Template) {
@@ -197,8 +227,13 @@ export default function NewSessionPage() {
   }
 
   function addExercise(exerciseId: string) {
-    setGroups((prev) => [...prev, { exerciseId, sets: [{ weight: "", reps: "", rpe: "" }] }]);
+    setGroups((prev) => [...prev, { exerciseId, sets: [{ weight: "", reps: "", rpe: "" }], notes: "" }]);
     setShowPicker(false);
+    fetchLastSets(exerciseId);
+  }
+
+  function updateGroupNotes(gi: number, val: string) {
+    setGroups((prev) => prev.map((g, i) => i !== gi ? g : { ...g, notes: val }));
   }
 
   function handleExerciseCreated(ex: Exercise) {
@@ -265,10 +300,16 @@ export default function NewSessionPage() {
         order: gi * 100 + si,
       }))
     );
+    const exerciseNotes = groups
+      .filter((g) => g.notes.trim())
+      .map((g) => `[${exerciseMap.get(g.exerciseId)?.name ?? "?"}]: ${g.notes.trim()}`)
+      .join("\n");
+    const finalNotes = [exerciseNotes, notes.trim()].filter(Boolean).join("\n\n");
+
     const res = await fetch("/api/sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ notes, sets: flatSets, date }),
+      body: JSON.stringify({ notes: finalNotes, sets: flatSets, date }),
     });
     if (res.ok) {
       router.push("/dashboard");
@@ -394,10 +435,18 @@ export default function NewSessionPage() {
             )}
             {lastSession && (
               <button
-                onClick={copyLastSession}
+                onClick={() => copyLastSession(false)}
                 className="bg-gray-900 hover:bg-gray-800 border border-gray-700 hover:border-orange-500 text-gray-300 rounded-xl px-3 py-3 text-sm transition-colors"
               >
-                ↻ Copiar última
+                ↻ Igual que última
+              </button>
+            )}
+            {lastSession && (
+              <button
+                onClick={() => copyLastSession(true)}
+                className="bg-gray-900 hover:bg-gray-800 border border-green-800 hover:border-green-500 text-green-400 rounded-xl px-3 py-3 text-sm transition-colors col-span-2"
+              >
+                ↑ Copiar +2.5 kg (progresión)
               </button>
             )}
           </div>
@@ -451,7 +500,16 @@ export default function NewSessionPage() {
                   <p className={`font-semibold ${CATEGORY_COLOR[ex?.category ?? ""] ?? "text-white"}`}>
                     {ex?.name ?? "Ejercicio"}
                   </p>
-                  <p className="text-xs text-gray-500 mt-0.5">{CATEGORY_LABELS[ex?.category ?? ""] ?? ""}</p>
+                  {lastSetsCache.get(group.exerciseId) ? (
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Última ({formatDaysAgo(lastSetsCache.get(group.exerciseId)!.date)}):{" "}
+                      {lastSetsCache.get(group.exerciseId)!.sets
+                        .map((s) => `${s.weight}×${s.reps}${s.rpe ? ` @${s.rpe}` : ""}`)
+                        .join(" · ")}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-500 mt-0.5">{CATEGORY_LABELS[ex?.category ?? ""] ?? ""}</p>
+                  )}
                 </div>
                 <div className="flex items-center gap-1">
                   <button
@@ -530,6 +588,13 @@ export default function NewSessionPage() {
                 >
                   + Serie
                 </button>
+                <textarea
+                  value={group.notes}
+                  onChange={(e) => updateGroupNotes(gi, e.target.value)}
+                  rows={1}
+                  placeholder="Notas del ejercicio..."
+                  className="w-full bg-gray-800 text-gray-300 rounded-lg px-3 py-2 border border-gray-800 focus:border-orange-500/50 focus:outline-none text-xs resize-none mt-1 placeholder-gray-600"
+                />
               </div>
             </div>
           );

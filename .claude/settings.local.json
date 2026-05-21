@@ -24,7 +24,9 @@
       "Bash(git push *)",
       "Bash(Remove-Item -Recurse -Force prisma/migrations)",
       "Bash(gh auth *)",
-      "Bash(npx vercel *)"
+      "Bash(npx vercel *)",
+      "Bash(Select-Object -First 30 FullName)",
+      "Bash(npx tsc *)"
     ]
   }
 }

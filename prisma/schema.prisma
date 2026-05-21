@@ -5,20 +5,52 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
-  id          String            @id @default(cuid())
-  name        String?
-  email       String            @unique
-  password    String
-  createdAt   DateTime          @default(now())
-  sessions    TrainingSession[]
-  exercises   Exercise[]
-  templates   Template[]
-  bodyWeights BodyWeight[]
-  goals       Goal[]
+  id           String            @id @default(cuid())
+  name         String?
+  email        String            @unique
+  password     String
+  createdAt    DateTime          @default(now())
+  sessions     TrainingSession[]
+  exercises    Exercise[]
+  templates    Template[]
+  bodyWeights  BodyWeight[]
+  goals        Goal[]
+  blocks       Block[]
+  competitions Competition[]
+}
+
+model Block {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  phase     String
+  startDate DateTime
+  endDate   DateTime
+  notes     String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Competition {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  date        DateTime
+  weightClass Float?
+  squat       Float?
+  bench       Float?
+  deadlift    Float?
+  total       Float?
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
 }
 
 model Exercise {
