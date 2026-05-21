@@ -51,6 +51,7 @@ export default function HistoryPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState<"all" | "month" | "week4">("all");
+  const [visibleCount, setVisibleCount] = useState(20);
 
   useEffect(() => {
     Promise.all([
@@ -117,11 +118,20 @@ export default function HistoryPage() {
     return true;
   });
 
+  const visibleSessions = filtered.slice(0, visibleCount);
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-32">
-        <p className="text-gray-400">Cargando...</p>
-      </div>
+      <main className="max-w-2xl mx-auto p-4 space-y-4">
+        <div className="flex items-center justify-between mb-2">
+          <div className="h-8 w-32 bg-gray-800 rounded-lg animate-pulse" />
+          <div className="h-8 w-16 bg-gray-800 rounded-lg animate-pulse" />
+        </div>
+        <div className="h-10 w-full bg-gray-900 rounded-xl animate-pulse" />
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="bg-gray-900 rounded-xl p-4 h-20 animate-pulse" />
+        ))}
+      </main>
     );
   }
 
@@ -146,7 +156,7 @@ export default function HistoryPage() {
               type="search"
               placeholder="Buscar por ejercicio..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setVisibleCount(20); }}
               className="w-full bg-gray-900 text-white rounded-xl px-4 py-2.5 border border-gray-700 focus:border-orange-500 focus:outline-none text-sm"
             />
             <div className="flex gap-2">
@@ -159,7 +169,7 @@ export default function HistoryPage() {
               ).map(([val, label]) => (
                 <button
                   key={val}
-                  onClick={() => setDateFilter(val)}
+                  onClick={() => { setDateFilter(val); setVisibleCount(20); }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                     dateFilter === val
                       ? "bg-orange-600 text-white"
@@ -181,82 +191,92 @@ export default function HistoryPage() {
               Registrar primera sesión
             </Link>
           </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-12 text-gray-500 text-sm">
+            Sin resultados para esa búsqueda
+          </div>
         ) : (
-          filtered.length === 0 ? (
-            <div className="text-center py-12 text-gray-500 text-sm">
-              Sin resultados para esa búsqueda
-            </div>
-          ) :
-          filtered.map((session) => {
-            const date = new Date(session.date);
-            const isOpen = expanded === session.id;
-            const exerciseGroups = groupSetsByExercise(session.sets);
-            const hasPRs = session.sets.some((s) => isPR(s.exercise.name, s.weight, s.reps));
+          <>
+            {visibleSessions.map((session) => {
+              const date = new Date(session.date);
+              const isOpen = expanded === session.id;
+              const exerciseGroups = groupSetsByExercise(session.sets);
+              const hasPRs = session.sets.some((s) => isPR(s.exercise.name, s.weight, s.reps));
 
-            return (
-              <div key={session.id} className="bg-gray-900 rounded-xl overflow-hidden">
-                <button
-                  onClick={() => setExpanded(isOpen ? null : session.id)}
-                  className="w-full px-5 py-4 flex items-center justify-between hover:bg-gray-800/50 transition-colors"
-                >
-                  <div className="text-left">
-                    <div className="font-semibold flex items-center gap-2">
-                      {date.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}
-                      {hasPRs && (
-                        <span className="bg-yellow-500/20 text-yellow-400 text-xs px-2 py-0.5 rounded-full font-medium">🏆 PR</span>
-                      )}
-                    </div>
-                    <div className="text-sm text-gray-400 mt-0.5">
-                      {session.sets.length} series · {Math.round(session.sets.reduce((sum, s) => sum + s.weight * s.reps, 0)).toLocaleString("es-AR")} kg · {exerciseGroups.map((e) => e.name).join(", ")}
-                    </div>
-                  </div>
-                  <span className="text-gray-500 ml-2">{isOpen ? "▲" : "▼"}</span>
-                </button>
-
-                {isOpen && (
-                  <div className="border-t border-gray-800 px-5 py-4 space-y-4">
-                    {exerciseGroups.map((group) => (
-                      <div key={group.name}>
-                        <h3 className={`font-semibold text-sm mb-2 ${CATEGORY_COLOR[group.category] ?? "text-white"}`}>
-                          {group.name}
-                        </h3>
-                        <div className="space-y-1.5">
-                          {group.sets.map((s, i) => {
-                            const pr = isPR(s.exercise.name, s.weight, s.reps);
-                            return (
-                              <div key={s.id} className={`flex items-center gap-3 text-sm ${pr ? "text-yellow-300" : "text-gray-300"}`}>
-                                <span className="text-gray-600 w-4">{i + 1}</span>
-                                <span className="font-medium">{s.weight} kg</span>
-                                <span className="text-gray-500">×</span>
-                                <span>{s.reps} reps</span>
-                                {s.rpe && <span className="text-gray-500">RPE {s.rpe}</span>}
-                                {pr && <span className="text-yellow-400 text-xs">🏆 PR</span>}
-                              </div>
-                            );
-                          })}
-                        </div>
+              return (
+                <div key={session.id} className="bg-gray-900 rounded-xl overflow-hidden">
+                  <button
+                    onClick={() => setExpanded(isOpen ? null : session.id)}
+                    className="w-full px-5 py-4 flex items-center justify-between hover:bg-gray-800/50 transition-colors"
+                  >
+                    <div className="text-left">
+                      <div className="font-semibold flex items-center gap-2">
+                        {date.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}
+                        {hasPRs && (
+                          <span className="bg-yellow-500/20 text-yellow-400 text-xs px-2 py-0.5 rounded-full font-medium">🏆 PR</span>
+                        )}
                       </div>
-                    ))}
-
-                    {session.notes && (
-                      <p className="text-sm text-gray-400 border-t border-gray-800 pt-3 italic">{session.notes}</p>
-                    )}
-
-                    <div className="flex gap-3 pt-1 border-t border-gray-800">
-                      <Link href={`/dashboard/session/${session.id}`}
-                        className="text-orange-400 hover:text-orange-300 text-sm font-medium">
-                        Editar
-                      </Link>
-                      <button onClick={() => deleteSession(session.id)}
-                        className="text-red-400 hover:text-red-300 text-sm">
-                        Eliminar
-                      </button>
+                      <div className="text-sm text-gray-400 mt-0.5">
+                        {session.sets.length} series · {Math.round(session.sets.reduce((sum, s) => sum + s.weight * s.reps, 0)).toLocaleString("es-AR")} kg · {exerciseGroups.map((e) => e.name).join(", ")}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            );
-          })
+                    <span className="text-gray-500 ml-2">{isOpen ? "▲" : "▼"}</span>
+                  </button>
+
+                  {isOpen && (
+                    <div className="border-t border-gray-800 px-5 py-4 space-y-4">
+                      {exerciseGroups.map((group) => (
+                        <div key={group.name}>
+                          <h3 className={`font-semibold text-sm mb-2 ${CATEGORY_COLOR[group.category] ?? "text-white"}`}>
+                            {group.name}
+                          </h3>
+                          <div className="space-y-1.5">
+                            {group.sets.map((s, i) => {
+                              const pr = isPR(s.exercise.name, s.weight, s.reps);
+                              return (
+                                <div key={s.id} className={`flex items-center gap-3 text-sm ${pr ? "text-yellow-300" : "text-gray-300"}`}>
+                                  <span className="text-gray-600 w-4">{i + 1}</span>
+                                  <span className="font-medium">{s.weight} kg</span>
+                                  <span className="text-gray-500">×</span>
+                                  <span>{s.reps} reps</span>
+                                  {s.rpe && <span className="text-gray-500">RPE {s.rpe}</span>}
+                                  {pr && <span className="text-yellow-400 text-xs">🏆 PR</span>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+
+                      {session.notes && (
+                        <p className="text-sm text-gray-400 border-t border-gray-800 pt-3 italic">{session.notes}</p>
+                      )}
+
+                      <div className="flex gap-3 pt-1 border-t border-gray-800">
+                        <Link href={`/dashboard/session/${session.id}`}
+                          className="text-orange-400 hover:text-orange-300 text-sm font-medium">
+                          Editar
+                        </Link>
+                        <button onClick={() => deleteSession(session.id)}
+                          className="text-red-400 hover:text-red-300 text-sm">
+                          Eliminar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {filtered.length > visibleCount && (
+              <button
+                onClick={() => setVisibleCount((n) => n + 20)}
+                className="w-full py-3 text-sm text-gray-400 hover:text-orange-400 border border-gray-700 hover:border-orange-500 rounded-xl transition-colors"
+              >
+                Ver más ({filtered.length - visibleCount} restantes)
+              </button>
+            )}
+          </>
         )}
       </main>
     </div>

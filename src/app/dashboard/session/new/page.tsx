@@ -28,6 +28,8 @@ interface Template {
   sets: { exerciseId: string; weight: number; reps: number; rpe: number | null; order: number }[];
 }
 
+const DRAFT_KEY = "powertrack_session_draft";
+
 const CATEGORY_LABELS: Record<string, string> = {
   squat: "Sentadilla",
   bench: "Press banca",
@@ -130,6 +132,11 @@ export default function NewSessionPage() {
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [timerRunning, setTimerRunning] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoSaveActive = useRef(false);
+  const [draftOffer, setDraftOffer] = useState<{
+    date: string; notes: string; groups: ExerciseGroup[]; savedAt: string;
+  } | null>(null);
+  const [showSavedToast, setShowSavedToast] = useState(false);
 
   const startTimer = useCallback(() => {
     if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
@@ -160,6 +167,30 @@ export default function NewSessionPage() {
   useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
 
   useEffect(() => {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as { date: string; notes: string; groups: ExerciseGroup[]; savedAt: string };
+        if (parsed.groups?.length > 0) { setDraftOffer(parsed); return; }
+      } catch {}
+    }
+    autoSaveActive.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!autoSaveActive.current) return;
+    if (groups.length === 0 && !notes.trim() && date === todayLocalDate()) return;
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ date, notes, groups, savedAt: new Date().toISOString() }));
+  }, [groups, notes, date]);
+
+  useEffect(() => {
+    if (groups.length === 0) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [groups.length]);
+
+  useEffect(() => {
     fetch("/api/exercises").then((r) => r.json()).then(setExercises);
     fetch("/api/sessions").then((r) => r.json()).then((sessions) => {
       if (sessions?.length > 0) setLastSession(sessions[0]);
@@ -185,6 +216,22 @@ export default function NewSessionPage() {
     const res = await fetch(`/api/exercises/${exerciseId}/last-sets`);
     const data: LastSetsData | null = res.ok ? await res.json() : null;
     setLastSetsCache((prev) => new Map(prev).set(exerciseId, data));
+  }
+
+  function restoreDraft() {
+    if (!draftOffer) return;
+    setDate(draftOffer.date);
+    setNotes(draftOffer.notes);
+    setGroups(draftOffer.groups);
+    draftOffer.groups.forEach((g) => fetchLastSets(g.exerciseId));
+    setDraftOffer(null);
+    autoSaveActive.current = true;
+  }
+
+  function discardDraft() {
+    localStorage.removeItem(DRAFT_KEY);
+    setDraftOffer(null);
+    autoSaveActive.current = true;
   }
 
   function formatDaysAgo(dateStr: string) {
@@ -312,7 +359,9 @@ export default function NewSessionPage() {
       body: JSON.stringify({ notes: finalNotes, sets: flatSets, date }),
     });
     if (res.ok) {
-      router.push("/dashboard");
+      localStorage.removeItem(DRAFT_KEY);
+      setShowSavedToast(true);
+      setTimeout(() => router.push("/dashboard"), 900);
     } else {
       setError("Error al guardar");
       setSaving(false);
@@ -334,6 +383,14 @@ export default function NewSessionPage() {
 
   return (
     <div>
+      {showSavedToast && (
+        <div className="fixed top-4 left-0 right-0 flex justify-center z-50 pointer-events-none">
+          <div className="bg-green-600 text-white font-semibold px-6 py-3 rounded-2xl shadow-xl text-sm animate-fade-in">
+            ✓ Sesión guardada
+          </div>
+        </div>
+      )}
+
       {showPicker && (
         <ExercisePicker
           exercises={exercises}
@@ -406,6 +463,22 @@ export default function NewSessionPage() {
           <button onClick={() => router.back()} className="text-gray-400 hover:text-white text-sm">← Volver</button>
           <h2 className="text-2xl font-bold">Nueva sesión</h2>
         </div>
+
+        {draftOffer && (
+          <div className="bg-blue-950/60 border border-blue-700 rounded-xl px-4 py-3 flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-blue-200">Borrador guardado</p>
+              <p className="text-xs text-blue-400 mt-0.5">
+                {new Date(draftOffer.savedAt).toLocaleString("es-AR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                {" · "}{draftOffer.groups.length} ejercicio{draftOffer.groups.length !== 1 ? "s" : ""}
+              </p>
+            </div>
+            <div className="flex gap-2 shrink-0 mt-0.5">
+              <button onClick={discardDraft} className="text-xs text-gray-400 hover:text-white transition-colors px-2 py-1">Descartar</button>
+              <button onClick={restoreDraft} className="text-xs bg-blue-600 hover:bg-blue-500 text-white rounded-lg px-3 py-1.5 font-semibold transition-colors">Restaurar</button>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-900/40 border border-red-700 text-red-300 rounded-lg px-4 py-3 text-sm">{error}</div>

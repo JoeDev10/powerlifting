@@ -107,6 +107,25 @@ export default function DashboardPage() {
     cursor.setDate(cursor.getDate() - 7);
   }
 
+  if (loading) {
+    return (
+      <main className="max-w-4xl mx-auto p-4 space-y-6">
+        <div className="bg-orange-600/30 rounded-2xl p-5 h-20 animate-pulse" />
+        <div className="grid grid-cols-2 gap-3">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="bg-gray-900 rounded-xl p-4 h-20 animate-pulse" />
+          ))}
+        </div>
+        <div className="bg-gray-900 rounded-xl h-32 animate-pulse" />
+        <div className="grid grid-cols-2 gap-3">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="bg-gray-800 rounded-xl p-4 h-20 animate-pulse" />
+          ))}
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="max-w-4xl mx-auto p-4 space-y-6">
       <DashboardTour />
@@ -128,7 +147,7 @@ export default function DashboardPage() {
       </Link>
 
       {/* Active block indicator */}
-      {!loading && activeBlock && (
+      {activeBlock && (
         <Link href="/dashboard/blocks" className="flex items-center justify-between bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 hover:border-gray-600 transition-colors">
           <div>
             <p className="text-xs text-gray-500 uppercase tracking-wide">Bloque activo</p>
@@ -141,7 +160,7 @@ export default function DashboardPage() {
       )}
 
       {/* Inactivity reminder */}
-      {!loading && daysSinceLastSession !== null && daysSinceLastSession >= 3 && (
+      {daysSinceLastSession !== null && daysSinceLastSession >= 3 && (
         <div className="bg-blue-950/40 border border-blue-800/60 rounded-xl px-4 py-3 flex items-center justify-between">
           <p className="text-sm text-blue-200">
             No entrenás hace{" "}
@@ -153,7 +172,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {!loading && sessions.length > 0 && (
+      {sessions.length > 0 && (
         <>
           {/* Stats row */}
           <div id="tour-stats" className="grid grid-cols-2 gap-3">
